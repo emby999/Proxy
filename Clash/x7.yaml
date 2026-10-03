@@ -1,0 +1,690 @@
+# ==================================================
+# Mihomo / Clash Meta 
+# 专业级主配置文件
+# Via 小七
+# ==================================================
+
+
+# ==========================
+# 基础端口
+# ==========================
+mixed-port: 7890
+ipv6: true
+allow-lan: true
+bind-address: "*"
+unified-delay: true
+tcp-concurrent: true
+external-controller: 127.0.0.1:9090
+external-ui: ui
+external-ui-url: "https://github.com/MetaCubeX/metacubexd/archive/refs/heads/gh-pages.zip"
+
+geodata-mode: true
+geox-url:
+  geoip: "https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geoip-lite.dat"
+  geosite: "https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/geosite.dat"
+  mmdb: "https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/country-lite.mmdb"
+  asn: "https://github.com/MetaCubeX/meta-rules-dat/releases/download/latest/GeoLite2-ASN.mmdb"
+
+find-process-mode: strict
+
+profile:
+  store-selected: true
+  store-fake-ip: true
+
+# ========== 嗅探优化 ==========
+sniffer:
+  enable: true
+  force-dns-mapping: true       # 对 redir-host 类型流量强制嗅探
+  parse-pure-ip: true           # 对纯 IP 连接强制嗅探域名
+  override-destination: true    # 用嗅探结果覆盖目标地址
+  sniff:
+    HTTP:
+      ports: [80, 8080-8880]
+      override-destination: true
+    TLS:
+      ports: [443, 8443]
+    QUIC:
+      ports: [443, 8443]
+  skip-domain:
+    - "Mijia Cloud"
+    - "+.push.apple.com"
+    - "+.srv.nintendo.net"
+    - "+.stun.playstation.net"
+  skip-src-address:
+    - 127.0.0.0/8
+    - 192.168.0.0/16
+    - 10.0.0.0/8
+    - 172.16.0.0/12
+    - fc00::/7
+    - fe80::/10
+  skip-dst-address:
+    - 127.0.0.0/8
+    - 192.168.0.0/16
+    - 10.0.0.0/8
+    - 172.16.0.0/12
+    - fc00::/7
+    - fe80::/10
+
+# ========== TUN 优化 ==========
+tun:
+  enable: true
+  stack: mixed                  # TCP 用 system，UDP 用 gvisor，最佳体验
+  auto-route: true
+  auto-redirect: true           # Linux 路由器必备，透明代理
+  auto-detect-interface: true
+  strict-route: true            # 防止 DNS 泄露 + Android DNS 劫持生效
+  dns-hijack:
+    - "any:53"
+    - "tcp://any:53"
+
+# ========== DNS 优化 ==========
+dns:
+  enable: true
+  ipv6: true
+  cache-algorithm: arc          # 自适应替换缓存，命中率比 lru 高
+  enhanced-mode: fake-ip
+  fake-ip-range: 198.18.0.1/16
+  fake-ip-filter-mode: blacklist
+  fake-ip-filter:               # 大幅扩充，避免需要真实 IP 的服务异常
+    # 局域网 / 本地
+    - "*.lan"
+    - "*.local"
+    - "*.localhost"
+    - "*.localdomain"
+    - "*.example"
+    - "*.invalid"
+    - "*.test"
+    # NTP 时间同步
+    - "+.ntp.org"
+    - "+.pool.ntp.org"
+    - "ntp*.aliyun.com"
+    - "time*.cloud.tencent.com"
+    - "time.*.com"
+    - "time.*.gov"
+    - "time.*.apple.com"
+    - "time1.*.com"
+    - "time2.*.com"
+    - "time3.*.com"
+    - "time4.*.com"
+    - "time5.*.com"
+    - "time6.*.com"
+    - "time7.*.com"
+    # STUN / WebRTC / VoIP
+    - "+.stun.*.*"
+    - "+.stun.*.*.*"
+    - "stun.*.*"
+    - "stun.*.*.*"
+    - "+.stun.playstation.net"
+    # 游戏平台
+    - "+.srv.nintendo.net"
+    - "+.stun.playstation.net"
+    - "xbox.*.microsoft.com"
+    - "+.xboxlive.com"
+    - "+.battlenet.com.cn"
+    - "+.battlenet.com"
+    - "+.blzstatic.cn"
+    - "+.battle.net"
+    # 网络连通性检测
+    - "dns.msftncsi.com"
+    - "www.msftncsi.com"
+    - "www.msftconnecttest.com"
+    - "msftconnecttest.com"
+    # Apple 推送
+    - "+.push.apple.com"
+    - "+.push.me.com"
+    # 小米
+    - "+.market.xiaomi.com"
+    - "Mijia Cloud"
+    # 其他需要真实 IP 的服务
+    - "*.crashlytics.com"
+    - "*.mcdn.bilivideo.cn"
+    - "localhost.ptlogin2.qq.com"
+    - "+.logon.battlenet.com.cn"
+    - "+.logon.battle.net"
+    - "work.*.com"
+    - "dns*.tencent.com"
+
+  default-nameserver:           # 用于解析 DNS 服务器域名，必须为纯 IP
+    - 223.5.5.5
+    - 119.29.29.29
+
+  nameserver-policy:            # 指定域名走指定 DNS，优先级最高
+    "geosite:cn,private":
+      - https://doh.pub/dns-query
+      - https://dns.alidns.com/dns-query
+    "geosite:geolocation-!cn":
+      - tls://8.8.4.4
+      - tls://1.1.1.1
+
+  proxy-server-nameserver:      # 专门解析代理节点域名，避免鸡蛋问题
+    - https://doh.pub/dns-query
+    - https://dns.alidns.com/dns-query
+
+  direct-nameserver:            # 直连流量用系统 DNS 重新解析，防止 fake-ip 污染
+    - system
+
+  direct-nameserver-follow-policy: false
+
+  nameserver:                   # 默认域名解析
+    - https://doh.pub/dns-query
+    - https://dns.alidns.com/dns-query
+
+  fallback:                     # 后备 DNS，保证被污染域名得到正确结果
+    - tls://8.8.4.4
+    - tls://1.1.1.1
+    - https://dns.google/dns-query
+    - https://cloudflare-dns.com/dns-query
+
+  fallback-filter:              # 什么情况下使用 fallback 结果
+    geoip: true
+    geoip-code: CN
+    ipcidr:
+      - 240.0.0.0/4
+      - 0.0.0.0/32
+      - 127.0.0.1/32
+      - 100.64.0.0/10
+    domain:
+      - "+.google.com"
+      - "+.facebook.com"
+      - "+.youtube.com"
+      - "+.twitter.com"
+      - "+.github.com"
+      - "+.githubusercontent.com"
+      - "+.telegram.org"
+      - "+.t.me"
+    # fallback-lazy-query: true  # 开启后先等 nameserver 结果判断，减少无效查询
+
+  
+# ==========================
+# 机场订阅 数据聚合
+# ==========================
+
+ProxyProvider: &ProxyProvider
+  type: http
+  interval: 86400
+  proxy: DIRECT
+  path: ./providers/proxy.yaml
+  health-check:
+    enable: true
+    url: https://www.gstatic.com/generate_204
+    interval: 300
+    timeout: 3000
+    lazy: true
+  exclude-filter: '(?i)(官网|客服|网站|网址|获取|订阅|流量|到期|过期|剩余|套餐|重置|邮箱|工单|群|邀请|返利|循环|导航|频道|通知|更新|作者|USE|USED|TOTAL|EXPIRE|Traffic|Expire|Panel|Channel)'
+
+RuleDomain: &RuleDomain {type: http, behavior: domain, format: mrs, interval: 86400}        # 域名规则，.mrs 格式，每天更新一次
+RuleIP: &RuleIP {type: http, behavior: ipcidr, format: mrs, interval: 86400}               # IP/网段规则，.mrs 格式，每天更新一次
+RuleDomainYaml: &RuleDomainYaml {type: http, behavior: domain, format: yaml, interval: 86400}   # 域名规则，YAML 格式，每天更新一次
+RuleClassicalYaml: &RuleClassicalYaml {type: http, behavior: classical, format: yaml, interval: 86400, proxy: DIRECT}  # 经典规则，YAML 格式，默认直连
+RuleClassicalText: &RuleClassicalText {type: http, behavior: classical, format: text, interval: 86400, proxy: DIRECT}  # 经典规则，纯文本 .txt，每行一条，默认直连
+RuleListText: &RuleListText {type: http, behavior: classical, format: list, interval: 86400, proxy: DIRECT}           # 经典规则，.list 文件格式，每行一个域名，默认直连
+
+ProviderUse: &ProviderUse [订阅一, 订阅二, 订阅三, 免流一, 免流二, 免流三]  
+
+FilterAll: &FilterAll '(?i)^(?!.*(DIRECT|REJECT|官网|客服|网站|网址|订阅|流量|到期|过期|剩余|套餐|群|邀请|返利|通知|Traffic|Expire|Panel)).*$'
+FilterCN: &FilterCN '(?i)(🇨🇳|中国|中|CN|China|Mainland|北京|上海|天津|重庆|广州|深圳|杭州|南京|苏州|武汉|成都|西安|沈阳|大连|青岛|厦门|福州|济南|郑州|长沙|合肥|哈尔滨|长春|南昌|昆明|南宁|海口|贵阳|兰州|西宁|乌鲁木齐|石家庄|太原|呼和浩特|拉萨|银川|南通|温州|嘉兴|台州|岳阳|常德|漳州|珠海|东莞|中山|佛山|惠州|威海|大庆)'
+FilterHK: &FilterHK '(?i)(🇭🇰|香港|港|HK|Hong|HKG)'
+FilterTW: &FilterTW '(?i)(🇹🇼|台湾|台|TW|Taiwan|TPE|KHH)'
+FilterSG: &FilterSG '(?i)(🇸🇬|新加坡|狮城|坡|SG|Singapore|SIN)'
+FilterJP: &FilterJP '(?i)(🇯🇵|日本|日|JP|Japan|Tokyo|Osaka|NRT|HND|KIX)'
+FilterKR: &FilterKR '(?i)(🇰🇷|韩国|韩|KR|Korea|Seoul)'
+FilterUS: &FilterUS '(?i)(🇺🇸|美国|美|US|USA|United States|Los Angeles|San Jose|LAX|SJC|SFO|SEA|NYC)'
+FilterEU: &FilterEU '(?i)(英国|德国|法国|荷兰|欧洲|EU|UK|GB|Germany|France|Netherlands|London|Frankfurt|Paris|Amsterdam)'
+FilterOther: &FilterOther '(?i)^(?!.*(香港|港|HK|台湾|台|TW|新加坡|狮城|SG|日本|日|JP|韩国|韩|KR|美国|美|US|USA|英国|德国|法国|荷兰|欧洲|EU|DIRECT|REJECT)).*$'
+
+UrlTest: &UrlTest
+  type: url-test
+  url: https://www.gstatic.com/generate_204
+  interval: 300
+  tolerance: 50
+  lazy: true
+  timeout: 3000
+#  hidden: true      # 所有 <<: *UrlTest 的组自动隐藏
+  
+
+Fallback: &Fallback
+  type: fallback
+  url: https://www.gstatic.com/generate_204
+  interval: 300
+  lazy: true
+  timeout: 3000
+  
+LoadBalance: &LoadBalance
+  type: load-balance
+  url: https://www.gstatic.com/generate_204
+  interval: 300
+  lazy: true
+  timeout: 3000
+  strategy: consistent-hashing
+#  hidden: true    # 所有 <<: *UrlTest 的组自动隐藏
+
+  
+# ==========================
+# 百度 直连
+# ==========================
+# > 百度直连HTTP配置 
+baidu: &baidu
+  type: http
+  port: 443
+  headers:
+    Host: www.baidu.com
+    X-T5-Auth: 1997382601
+    
+    # 百度直连第二种写法
+    # Baidu-Direct: true
+
+    # 钉钉直连写法
+    # With-At: gw.alicdn.com
+    # X-T5-Auth: 683556433
+    # Host: 153.3.236.22:443    
+    
+#  > 彩信直连
+#  - {name: 彩信直连, server: cloudnproxy.n.shifen.com, <<: *baidu, dialer-proxy: "局域网"}
+#  - {name: 局域网, type: http, server: 10.0.0.200, port: 80}  
+#本地彩信    
+ 
+#  - name: "⭐ 彩信 直连"
+#    type: http
+#    server: 14.215.182.75
+#    port: 443
+#    headers:
+#      X-T5-Auth: 683556433
+#      Host: 153.3.236.22:443
+#    dialer-proxy: 局域网
+
+#  - name: "局域网"
+#    type: http
+#    server: 10.0.0.200
+#    port: 80
+
+
+# > 配置模板 > 节点信息
+# 百度
+#  - {name: 🐻 百度, server: cloudnproxy.baidu.com, port: 443, type: http, headers: {Host: 153.3.236.22:443, X-T5-Auth: 1826371127}}
+
+  
+  
+# ==================================================
+# 节点订阅
+# ==================================================
+
+proxy-providers:
+
+          
+  订阅一:
+    <<: *ProxyProvider
+    url: "机场订阅1"
+    path: ./providers/sub1.yaml
+    override:
+      additional-prefix: "[一] "
+
+  订阅二:
+    <<: *ProxyProvider
+    url: "机场订阅2"
+    path: ./providers/sub2.yaml
+    override:
+      additional-prefix: "[二] "
+      
+  订阅三:
+    <<: *ProxyProvider
+    url: "订阅地址"
+    path: ./providers/sub2.yaml
+    override:
+      additional-prefix: "[三] "      
+      
+  免流一:
+    <<: *ProxyProvider
+    url: "免流机场停机"
+    path: ./providers/sub4.yaml
+    override:
+      additional-prefix: "[停免] "    
+      
+  免流二:
+    <<: *ProxyProvider
+    url: "h免流机场2停机"
+    path: ./providers/sub5.yaml
+    override:
+      additional-prefix: "[停免] "              
+      
+  免流三:
+    <<: *ProxyProvider
+    url: "免流机场3定向"
+    path: ./providers/sub6.yaml
+    override:
+      additional-prefix: "[定免] "  
+    
+# ==================================================
+# 手动节点
+# ==================================================
+
+proxies:
+# 百度代理
+  - name: 🇨🇳百度 域名
+    server: cloudnproxy.baidu.com
+    <<: *baidu
+  - name: 🇨🇳电信 广东广州
+    server: 14.215.182.75
+    <<: *baidu
+  - name: 🇨🇳电信 江苏南京
+    server: 180.101.50.249
+    <<: *baidu
+  - name: 🇨🇳电信 江苏南京2
+    server: 180.101.50.208
+    <<: *baidu
+  - name: 🇨🇳电信 北京
+    server: 220.181.7.1
+    <<: *baidu
+  - name: 🇨🇳电信 北京2
+    server: 220.181.111.189
+    <<: *baidu
+  - name: 🇨🇳电信 北京3
+    server: 220.181.33.174
+    <<: *baidu
+  - name: 🇨🇳联通 江苏南京
+    server: 153.3.237.117
+    <<: *baidu
+  - name: 🇨🇳联通 江苏苏州
+    server: 157.0.146.158
+    <<: *baidu
+  - name: 🇨🇳联通 广东广州
+    server: 163.177.17.6
+    <<: *baidu
+  - name: 🇨🇳联通 河北保定
+    server: 110.242.70.68
+    <<: *baidu
+  - name: 🇨🇳联通 河北保定2
+    server: 110.242.70.69
+    <<: *baidu
+  - name: 🇨🇳联通 广东广州2
+    server: 163.177.17.189
+    <<: *baidu
+  - name: 🇨🇳移动 江苏南京
+    server: 36.155.169.188
+    <<: *baidu
+  - name: 🇨🇳移动 广东广州
+    server: 183.240.98.84
+    <<: *baidu
+
+
+# ==================================================
+# 策略组
+# ==================================================
+
+proxy-groups:
+
+# ==========================
+# 漏网之鱼（国外代理）
+# ==========================
+
+  - name: 漏网之鱼
+    type: select
+    url: http://www.gstatic.com/generate_204
+#    url: http://1.1.1.1/generate_204    
+    interval: 300
+#    tolerance: 50   # 专用：延迟容差，避免频繁切换
+    proxies:
+      - 国内直连
+      - 香港策略
+      - 台湾策略
+      - 狮城策略
+      - 日本策略
+      - 韩国策略
+      - 美国策略
+      - 欧洲策略
+      - DIRECT      
+    icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Final.png
+               
+# ==========================
+# 国内代理（直连）
+# ==========================
+
+  - name: 国内直连
+    type: select
+    url: http://www.baidu.com
+#    url: http://cp.cloudflare.com/generate_204    
+    interval: 300
+    proxies:      
+      - 国内策略
+      - 香港策略
+      - 台湾策略
+      - 狮城策略
+      - 日本策略
+      - 韩国策略
+      - 美国策略
+      - 欧洲策略
+      - DIRECT      
+      
+    icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/China.png      
+      
+    
+# ==========================
+# 国内游戏媒体
+# ==========================
+
+  - name: 游戏媒体
+    type: select
+    url: http://www.baidu.com
+    interval: 300    
+    proxies:
+      - 国内直连
+      - 国内策略      
+      - 香港策略
+      - 台湾策略
+      - 狮城策略
+      - 日本策略
+      - 韩国策略
+      - 美国策略
+      - 欧洲策略
+      - DIRECT      
+    icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Game.png
+    
+# ==========================
+# 地区手动策略
+# ==========================      
+      
+  - name: 国内策略
+    type: select
+    proxies: [中国自动, 中国均衡, DIRECT]
+    use: *ProviderUse
+    filter: *FilterCN  
+    icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/China.png
+  - name: 香港策略
+    type: select
+    proxies: [香港自动, 香港均衡, DIRECT]
+    use: *ProviderUse
+    filter: *FilterHK
+    icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Hong_Kong.png
+  - name: 台湾策略
+    type: select
+    proxies: [台湾自动, 台湾均衡, DIRECT]
+    use: *ProviderUse
+    filter: *FilterTW
+    icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Taiwan.png
+  - name: 狮城策略
+    type: select
+    proxies: [狮城自动, 狮城均衡, DIRECT]
+    use: *ProviderUse
+    filter: *FilterSG
+    icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Singapore.png
+  - name: 日本策略
+    type: select
+    proxies: [日本自动, 日本均衡, DIRECT]
+    use: *ProviderUse
+    filter: *FilterJP
+    icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Japan.png
+  - name: 韩国策略
+    type: select
+    proxies: [韩国自动, DIRECT]
+    use: *ProviderUse
+    filter: *FilterKR
+    icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Korea.png
+  - name: 美国策略
+    type: select
+    proxies: [美国自动, 美国均衡, DIRECT]
+    use: *ProviderUse
+    filter: *FilterUS
+    icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/United_States.png
+  - name: 欧洲策略
+    type: select
+    proxies: [欧洲自动, DIRECT]
+    use: *ProviderUse
+    filter: *FilterEU
+    icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/European_Union.png
+
+  # 地区自动策略
+  - {name: 中国自动, <<: *UrlTest, use: *ProviderUse, filter: *FilterCN, icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/China.png}  
+  - {name: 香港自动, <<: *UrlTest, use: *ProviderUse, filter: *FilterHK, icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Hong_Kong.png}
+  - {name: 台湾自动, <<: *UrlTest, use: *ProviderUse, filter: *FilterTW, icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Taiwan.png}
+  - {name: 狮城自动, <<: *UrlTest, use: *ProviderUse, filter: *FilterSG, icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Singapore.png}
+  - {name: 日本自动, <<: *UrlTest, use: *ProviderUse, filter: *FilterJP, icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Japan.png}
+  - {name: 韩国自动, <<: *UrlTest, use: *ProviderUse, filter: *FilterKR, icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Korea.png}
+  - {name: 美国自动, <<: *UrlTest, use: *ProviderUse, filter: *FilterUS, icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/United_States.png}
+  - {name: 欧洲自动, <<: *UrlTest, use: *ProviderUse, filter: *FilterEU, icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/European_Union.png}
+
+  # 地区均衡策略
+  - {name: 中国均衡, <<: *LoadBalance, use: *ProviderUse, filter: *FilterCN, icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/China.png}    
+  - {name: 香港均衡, <<: *LoadBalance, use: *ProviderUse, filter: *FilterHK, icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Hong_Kong.png}
+  - {name: 台湾均衡, <<: *LoadBalance, use: *ProviderUse, filter: *FilterTW, icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Taiwan.png}
+  - {name: 狮城均衡, <<: *LoadBalance, use: *ProviderUse, filter: *FilterSG, icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Singapore.png}
+  - {name: 日本均衡, <<: *LoadBalance, use: *ProviderUse, filter: *FilterJP, icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/Japan.png}
+  - {name: 美国均衡, <<: *LoadBalance, use: *ProviderUse, filter: *FilterUS, icon: https://raw.githubusercontent.com/Koolson/Qure/master/IconSet/Color/United_States.png}
+      
+
+# ==================================================
+# 规则控制
+# ==================================================
+rules:
+
+  # ===== 红果/字节系广告拦截 =====
+  - DOMAIN-KEYWORD,pangolin-sdk-toutiao,REJECT   # 穿山甲SDK（素材/上报）
+  - DOMAIN-KEYWORD,pglstatp-toutiao,REJECT       # 穿山甲统计/广告图
+  - DOMAIN-KEYWORD,ad.toutiao.com,REJECT         # 头条广告
+  - DOMAIN-KEYWORD,adshare.toutiao.com,REJECT
+  - DOMAIN-KEYWORD,sdfp.snssdk.com,REJECT        # 广告投放
+  - DOMAIN-KEYWORD,bds.snssdk.com,REJECT
+  - DOMAIN-KEYWORD,extlog.snssdk.com,REJECT      # 广告日志
+  - DOMAIN-SUFFIX,pangle.cn,REJECT
+  - DOMAIN-SUFFIX,pangle.io,REJECT
+
+  # ===== 通用广告规则集（28万条，每天自动更新）=====
+  - RULE-SET,ad-reject,REJECT
+  
+  # ===== QUIC 拦截 =====
+  - AND,((DST-PORT,443),(NETWORK,UDP)),REJECT
+
+  # ===== 局域网 / 私有地址 =====
+  - GEOIP,PRIVATE,DIRECT
+
+  # ===== 隐私 / 追踪拦截 =====
+  - DOMAIN-REGEX,\.log\.,REJECT
+  - DOMAIN-KEYWORD,tracker,REJECT
+  - DOMAIN-REGEX,^adservice\.google\.,REJECT
+  - DOMAIN-SUFFIX,stun.l.google.com,REJECT
+  - DOMAIN-KEYWORD,stun,REJECT
+  
+  # 广告拦截 - 使用 no-resolve 避免 DNS 查询
+
+  # ===== 广告拦截 =====
+  - GEOSITE,category-ads-all,REJECT
+  - DOMAIN-KEYWORD,ads,REJECT
+#  - DOMAIN-KEYWORD,ads.,REJECT
+
+  # 包名（拼多多）
+  - PROCESS-NAME,com.xunmeng.pinduoduo,国内直连
+
+  # 或者正则
+#  - PROCESS-NAME-REGEX,.*tencent.*,proxy
+
+
+  #  ===== 蓝秦云 ===== 
+  - DOMAIN-SUFFIX,lanzou.com,国内直连
+  - DOMAIN-REGEX,^.*lanzou[a-z]*\.com$,国内直连
+  - DOMAIN-SUFFIX,lanzoub.com,REJECT
+  - DOMAIN-SUFFIX,lanzouw.com,REJECT
+
+  # ===== 兜底拦截 =====
+#  - DOMAIN-SUFFIX,ad.com,REJECT
+#  - DOMAIN-SUFFIX,ads.com,REJECT
+#  - DOMAIN-KEYWORD,-ad-,REJECT
+#  - DOMAIN-KEYWORD,-ads-,REJECT
+
+  # ===== TickTick =====
+  # 滴答清单国内版 → 直连
+  - DOMAIN-KEYWORD,dida365,国内直连
+  # TickTick国际版 → 走代理（避免绕路）
+  - DOMAIN-KEYWORD,ticktick,漏网之鱼
+
+  # ===== 国内直连 =====
+  - DOMAIN-SUFFIX,cn,国内直连
+  - DOMAIN-SUFFIX,ntp.org,国内直连
+  - DOMAIN-REGEX,^time[0-9]*\.,国内直连
+  
+  - DOMAIN-SUFFIX,speedtest,国内直连
+  - GEOSITE,speedtest,国内直连
+
+  # ===== 国内公司海外业务（需代理，放 GEOSITE,cn 前面）=====
+  - DOMAIN-SUFFIX,tiktokv.com,漏网之鱼
+  - DOMAIN-SUFFIX,tiktokcdn.com,漏网之鱼
+  - DOMAIN-SUFFIX,musical.ly,漏网之鱼
+  - DOMAIN-SUFFIX,pstatp.com,漏网之鱼
+  - DOMAIN-SUFFIX,snssdk.com,漏网之鱼
+
+  # ===== AI 服务 =====
+  - GEOSITE,openai,漏网之鱼
+  # - GEOSITE,anthropic,漏网之鱼
+  # - GEOSITE,gemini,漏网之鱼
+
+  # ===== Telegram =====
+  - GEOSITE,telegram,漏网之鱼
+  - GEOIP,telegram,漏网之鱼
+
+  # ===== Google =====
+  - GEOSITE,google,漏网之鱼
+
+  # ===== GitHub =====
+  - GEOSITE,github,漏网之鱼
+
+  # ===== 微软服务 =====
+  - GEOSITE,microsoft,国内直连
+  - DOMAIN-SUFFIX,githubusercontent.com,漏网之鱼
+  - DOMAIN-SUFFIX,sharepoint.com,漏网之鱼
+
+  # ===== 苹果服务 =====
+  - GEOSITE,apple,国内直连
+
+  # ===== 流媒体 =====
+  - GEOSITE,youtube,漏网之鱼
+  - GEOSITE,netflix,漏网之鱼
+  - GEOSITE,disney,漏网之鱼
+  - GEOSITE,spotify,漏网之鱼
+  - GEOSITE,hbo,漏网之鱼
+  - GEOSITE,bilibili,国内直连
+
+  # ===== 游戏 =====
+  - AND,((GEOIP,CN),(NETWORK,UDP)),游戏媒体
+  - GEOSITE,category-games@cn,游戏媒体
+  - GEOSITE,category-games,漏网之鱼
+  
+  # ===== 国内兜底 =====
+  - GEOSITE,cn,国内直连
+  - GEOIP,CN,国内直连
+
+  # ===== 最终兜底 =====
+  - MATCH,漏网之鱼
+  
+  
+# ==========================
+# URL 远程规则集
+# ==========================
+rule-providers:
+  # 域名规则
+#  Tracking: {<<: *RuleDomain, url: https://github.com/666OS/rules/raw/release/mihomo/domain/Tracking.mrs}
+
+  ad-reject:
+    type: http
+    behavior: classical
+    format: yaml
+    path: ./ruleset/ad-reject.yaml
+    url: "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Clash/Advertising/Advertising.yaml"
+    interval: 86400
+    
