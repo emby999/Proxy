@@ -327,21 +327,21 @@ proxy-providers:
       
   订阅三:
     <<: *ProxyProvider
-    url: "订阅地址"
+    url: "订阅地址3"
     path: ./providers/sub2.yaml
     override:
       additional-prefix: "[三] "      
       
   免流一:
     <<: *ProxyProvider
-    url: "免流机场停机"
+    url: "免流机场1停机"
     path: ./providers/sub4.yaml
     override:
       additional-prefix: "[停免] "    
       
   免流二:
     <<: *ProxyProvider
-    url: "h免流机场2停机"
+    url: "免流机场2停机"
     path: ./providers/sub5.yaml
     override:
       additional-prefix: "[停免] "              
